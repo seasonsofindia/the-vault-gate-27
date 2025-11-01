@@ -1,0 +1,7 @@
+name,description,price,category,sizes,colors,images,featured,stock
+Premium Leather Jacket,Crafted from the finest Italian leather. Perfect for any occasion.,1299.99,Outerwear,"[""XS"",""S"",""M"",""L"",""XL"",""XXL""]","[""Black"",""Brown""]","[""product-jacket-black.jpg""]",true,50
+Luxury Silk Shirt,Made from 100% pure mulberry silk offering unparalleled comfort.,459.99,Shirts,"[""XS"",""S"",""M"",""L"",""XL"",""XXL""]","[""White"",""Cream"",""Navy""]","[""product-shirt-white.jpg""]",true,75
+Classic Navy Jeans,Premium Japanese denim with a modern fit.,329.99,Bottoms,"[""28"",""30"",""32"",""34"",""36"",""38""]","[""Navy"",""Black"",""Indigo""]","[""product-jeans-navy.jpg""]",true,100
+Heritage Gold Watch,Swiss-made automatic timepiece with genuine leather strap.,2899.99,Accessories,"[""One Size""]","[""Gold"",""Silver"",""Rose Gold""]","[""product-watch-gold.jpg""]",true,25
+Classic Leather Boots,Handcrafted Italian leather boots with premium construction.,899.99,Footwear,"[""7"",""8"",""9"",""10"",""11"",""12""]","[""Black"",""Brown"",""Tan""]","[""product-boots-black.jpg""]",true,60
+Cashmere Sweater,100% pure cashmere from Scotland. Incredibly soft and warm.,679.99,Knitwear,"[""XS"",""S"",""M"",""L"",""XL"",""XXL""]","[""Beige"",""Navy"",""Grey"",""Black""]","[""product-sweater-beige.jpg""]",true,80
