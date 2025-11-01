@@ -17,12 +17,11 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get the two approved applications
+    // Get all approved applications
     const { data: applications, error: appError } = await supabaseAdmin
       .from("membership_applications")
       .select("*")
-      .eq("status", "approved")
-      .in("email", ["tsk7293@gmail.com", "shivaroyal7@gmail.com"]);
+      .eq("status", "approved");
 
     if (appError) throw appError;
 
@@ -63,13 +62,12 @@ serve(async (req) => {
         continue;
       }
 
-      // Assign role (admin for first email, member for second)
-      const role = app.email === "tsk7293@gmail.com" ? "admin" : "member";
+      // Assign admin role to all users during initial setup
       const { error: roleError } = await supabaseAdmin
         .from("user_roles")
         .insert({
           user_id: authData.user.id,
-          role: role,
+          role: "admin",
         });
 
       if (roleError) {
@@ -81,7 +79,7 @@ serve(async (req) => {
       results.push({ 
         email: app.email, 
         userId: authData.user.id, 
-        role: role,
+        role: "admin",
         success: true 
       });
     }
