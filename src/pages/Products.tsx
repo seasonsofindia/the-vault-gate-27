@@ -292,20 +292,27 @@ const Products = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b border-border bg-card">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/shop")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Shop
-            </Button>
-            <h1 className="text-2xl font-bold">Product Management</h1>
-          </div>
+      <nav className="border-b border-primary/20 bg-black">
+        <div className="container mx-auto px-4 py-6 flex justify-between items-center">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate("/admin")}
+            className="text-foreground hover:text-primary hover:bg-primary/10"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <h1 className="text-3xl font-black tracking-tighter text-foreground">
+            VAULT 27 <span className="text-primary">PRODUCTS</span>
+          </h1>
           <div className="flex gap-2">
             <Dialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Upload className="w-4 h-4 mr-2" />
+                <Button
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary hover:text-black"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
                   Import CSV
                 </Button>
               </DialogTrigger>
@@ -346,8 +353,10 @@ const Products = () => {
               if (!open) resetForm();
             }}>
               <DialogTrigger asChild>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button 
+                  className="bg-primary hover:bg-primary/90 text-black font-bold"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
                   Add Product
                 </Button>
               </DialogTrigger>

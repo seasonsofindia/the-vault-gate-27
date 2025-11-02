@@ -1,97 +1,66 @@
 import { Button } from "@/components/ui/button";
-import { Vault, Lock, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Landing = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[image:var(--vault-gradient)] text-foreground">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 border-b border-border/50 bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Vault className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold bg-[image:var(--gold-shine)] bg-clip-text text-transparent">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+      <div className="max-w-4xl w-full space-y-12 text-center">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-7xl md:text-8xl font-black tracking-tighter text-foreground">
               VAULT 27
             </h1>
+            <div className="h-1 w-32 bg-primary mx-auto"></div>
           </div>
+          <p className="text-xl md:text-2xl text-muted-foreground uppercase tracking-wide">
+            Tech-Luxury E-Commerce Platform
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
           <Button 
-            variant="ghost" 
+            size="lg" 
+            onClick={() => navigate("/apply")}
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-black font-bold px-8 py-6 text-lg"
+          >
+            Apply for Access
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline"
             onClick={() => navigate("/auth")}
-            className="text-foreground"
+            className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-black font-bold px-8 py-6 text-lg"
           >
             Member Login
           </Button>
         </div>
-      </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-4xl text-center">
-          <div className="flex justify-center mb-8">
-            <div className="relative">
-              <Lock className="w-24 h-24 text-primary animate-pulse" />
-              <div className="absolute inset-0 blur-2xl bg-primary/20" />
-            </div>
-          </div>
-          
-          <h2 className="text-6xl font-bold mb-6 bg-[image:var(--gold-shine)] bg-clip-text text-transparent">
-            Exclusive Access
-          </h2>
-          
-          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            VAULT 27 is a members-only marketplace offering curated, premium merchandise. 
-            Access is granted by invitation or application only.
-          </p>
-          
-          <Button 
-            size="lg" 
-            onClick={() => navigate("/apply")}
-            className="text-lg px-8 py-6 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/50 transition-all"
-          >
-            Request Access
-          </Button>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 px-6 bg-card/50">
-        <div className="container mx-auto max-w-6xl">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-8 rounded-lg bg-background/50 backdrop-blur border border-border">
-              <Crown className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2">Curated Selection</h3>
-              <p className="text-muted-foreground">
-                Handpicked premium merchandise exclusively for members
+        <div className="pt-12 space-y-8">
+          <h2 className="text-3xl font-bold uppercase tracking-wider">Exclusive Access</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-8 rounded-sm bg-card border border-border hover:border-primary transition-colors">
+              <h3 className="font-bold mb-3 text-xl uppercase tracking-wide">Premium Products</h3>
+              <p className="text-sm text-muted-foreground">
+                Curated selection of tech-luxury items
               </p>
             </div>
-            
-            <div className="text-center p-8 rounded-lg bg-background/50 backdrop-blur border border-border">
-              <Vault className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2">Verified Members</h3>
-              <p className="text-muted-foreground">
-                Every member is personally reviewed and approved
+            <div className="p-8 rounded-sm bg-card border border-border hover:border-primary transition-colors">
+              <h3 className="font-bold mb-3 text-xl uppercase tracking-wide">Members Only</h3>
+              <p className="text-sm text-muted-foreground">
+                Elite community of discerning customers
               </p>
             </div>
-            
-            <div className="text-center p-8 rounded-lg bg-background/50 backdrop-blur border border-border">
-              <Lock className="w-12 h-12 text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-bold mb-2">Private Marketplace</h3>
-              <p className="text-muted-foreground">
-                Secure, members-only shopping experience
+            <div className="p-8 rounded-sm bg-card border border-border hover:border-primary transition-colors">
+              <h3 className="font-bold mb-3 text-xl uppercase tracking-wide">First Access</h3>
+              <p className="text-sm text-muted-foreground">
+                Priority access to limited releases
               </p>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-border">
-        <div className="container mx-auto text-center text-muted-foreground">
-          <p>&copy; 2025 VAULT 27. All rights reserved.</p>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 };

@@ -157,54 +157,51 @@ const Shop = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
-      <nav className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
-        <div className="container mx-auto px-4 py-3">
+      <nav className="sticky top-0 z-40 border-b border-primary/20 bg-black backdrop-blur-md">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/shop")}>
-              <Vault className="w-6 h-6 md:w-8 md:h-8 text-primary" />
-              <h1 className="text-lg md:text-2xl font-bold text-foreground">
-                VAULT 27
+            <div className="flex items-center gap-6">
+              <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-foreground">
+                VAULT <span className="text-primary">27</span>
               </h1>
-            </div>
-            
-            <div className="flex items-center gap-2 md:gap-4">
               {userName && (
-                <span className="text-xs md:text-sm text-muted-foreground hidden lg:block">
-                  Welcome, {userName}
+                <span className="text-xs md:text-sm text-muted-foreground hidden lg:block uppercase tracking-wide">
+                  {userName}
                 </span>
               )}
+            </div>
+            
+            <div className="flex items-center gap-2 md:gap-3">
               {isAdmin && (
                 <>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => navigate("/admin")}
-                    className="hidden md:flex"
+                    className="hidden md:flex border-primary text-primary hover:bg-primary hover:text-black"
                   >
-                    <Settings className="w-4 h-4 mr-2" />
-                    Applications
+                    Admin
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => navigate("/products")}
-                    className="hidden md:flex"
+                    className="hidden md:flex border-primary text-primary hover:bg-primary hover:text-black"
                   >
-                    <Settings className="w-4 h-4 mr-2" />
                     Products
                   </Button>
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={() => navigate("/admin")}
-                    className="md:hidden h-9 w-9"
+                    className="md:hidden h-9 w-9 border-primary text-primary"
                   >
                     <Settings className="w-4 h-4" />
                   </Button>
                 </>
               )}
               <CartDrawer />
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="h-9 text-xs md:text-sm">
+              <Button variant="ghost" size="sm" onClick={handleLogout} className="h-9 text-xs md:text-sm hover:text-primary">
                 <LogOut className="w-4 h-4 md:mr-2" />
                 <span className="hidden md:inline">Logout</span>
               </Button>
@@ -214,12 +211,12 @@ const Shop = () => {
       </nav>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-muted to-background text-center py-12 md:py-20 px-4 md:px-6">
-        <h2 className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 text-foreground">
-          Exclusive Collection
+      <div className="bg-black border-b border-primary/20 text-center py-16 md:py-24 px-4 md:px-6">
+        <h2 className="text-4xl md:text-6xl font-black mb-3 md:mb-4 text-foreground tracking-tighter">
+          EXCLUSIVE <span className="text-primary">COLLECTION</span>
         </h2>
-        <p className="text-base md:text-xl text-muted-foreground max-w-2xl mx-auto">
-          Curated premium merchandise for VAULT 27 members
+        <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto uppercase tracking-wide">
+          Premium Tech-Luxury Products
         </p>
       </div>
 
