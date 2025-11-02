@@ -306,6 +306,43 @@ const Products = () => {
             VAULT 27 <span className="text-primary">PRODUCTS</span>
           </h1>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  setIsProcessing(true);
+                  const response = await fetch('/VAULT27_sample_products.csv');
+                  const csvContent = await response.text();
+                  
+                  const { data, error } = await supabase.functions.invoke('import-products-csv', {
+                    body: { csvContent }
+                  });
+
+                  if (error) throw error;
+                  if (data?.error) throw new Error(data.error);
+
+                  toast({
+                    title: "Success",
+                    description: `Successfully imported ${data.count} sample products`,
+                  });
+                  
+                  fetchProducts();
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to import sample products",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsProcessing(false);
+                }
+              }}
+              disabled={isProcessing}
+              className="border-accent text-accent hover:bg-accent hover:text-black"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Load Sample Products
+            </Button>
             <Dialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen}>
               <DialogTrigger asChild>
                 <Button

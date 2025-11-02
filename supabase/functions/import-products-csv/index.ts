@@ -10,11 +10,16 @@ interface ProductRow {
   description: string;
   price: string;
   category: string;
-  sizes: string;
-  colors: string;
-  images: string;
-  featured: string;
+  sizes?: string;
+  colors?: string;
+  images?: string;
+  featured?: string;
   stock: string;
+  // New format fields
+  discount_price?: string;
+  color?: string;
+  size?: string;
+  image_url?: string;
 }
 
 Deno.serve(async (req) => {
@@ -80,25 +85,47 @@ Deno.serve(async (req) => {
 
       // Parse and clean the data
       try {
-        // Clean up the sizes, colors, images fields
-        let sizesStr = row.sizes || '["One Size"]';
-        let colorsStr = row.colors || '["Default"]';
-        let imagesStr = row.images || '[]';
+        let sizes: string[];
+        let colors: string[];
+        let images: string[];
+        let discount = 0;
 
-        // Remove excessive quote escaping
-        sizesStr = sizesStr.replace(/""""/g, '"').replace(/^"|"$/g, '');
-        colorsStr = colorsStr.replace(/""""/g, '"').replace(/^"|"$/g, '');
-        imagesStr = imagesStr.replace(/""""/g, '"').replace(/^"|"$/g, '');
+        // Detect format: new format has 'color', 'size', 'image_url' fields
+        // Old format has 'colors', 'sizes', 'images' as JSON arrays
+        if (row.color && row.size && row.image_url) {
+          // New format - single variant per row
+          sizes = [row.size];
+          colors = [row.color];
+          images = [row.image_url];
+          discount = row.discount_price ? parseFloat(row.discount_price) : 0;
+          console.log('Using new CSV format (single variant per row)');
+        } else {
+          // Old format - JSON arrays
+          let sizesStr = row.sizes || '["One Size"]';
+          let colorsStr = row.colors || '["Default"]';
+          let imagesStr = row.images || '[]';
+
+          // Remove excessive quote escaping
+          sizesStr = sizesStr.replace(/""""/g, '"').replace(/^"|"$/g, '');
+          colorsStr = colorsStr.replace(/""""/g, '"').replace(/^"|"$/g, '');
+          imagesStr = imagesStr.replace(/""""/g, '"').replace(/^"|"$/g, '');
+
+          sizes = JSON.parse(sizesStr);
+          colors = JSON.parse(colorsStr);
+          images = JSON.parse(imagesStr);
+          console.log('Using old CSV format (JSON arrays)');
+        }
 
         const product = {
           name: row.name,
           description: row.description,
           price: parseFloat(row.price),
+          discount: discount,
           category: row.category,
-          sizes: JSON.parse(sizesStr),
-          colors: JSON.parse(colorsStr),
-          images: JSON.parse(imagesStr),
-          featured: row.featured?.toLowerCase() === 'true',
+          sizes: sizes,
+          colors: colors,
+          images: images,
+          featured: row.featured?.toLowerCase() === 'true' || false,
           stock: parseInt(row.stock) || 0,
         };
 
