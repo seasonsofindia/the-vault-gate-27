@@ -104,17 +104,19 @@ const Products = () => {
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/shopify/products', {
+      const { data, error } = await supabase.functions.invoke('shopify-products', {
         method: 'GET',
       });
       
-      if (!response.ok) throw new Error('Failed to fetch products');
+      if (error) throw error;
       
-      const data = await response.json();
       setProducts(data.products || []);
     } catch (error: any) {
-      // If API call fails, try using the Shopify tool directly
-      console.log("Fetching from Shopify...");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch products from Shopify",
+        variant: "destructive",
+      });
       setProducts([]);
     }
     setIsLoading(false);
@@ -175,13 +177,10 @@ const Products = () => {
         alt: formData.title 
       }));
 
-      // Create product using our internal API
-      const response = await fetch('/api/shopify/products', {
+      // Create product using Shopify edge function
+      const { data, error } = await supabase.functions.invoke('shopify-products', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           title: formData.title,
           body_html: formData.body,
           vendor: formData.vendor || 'VAULT 27',
@@ -190,12 +189,11 @@ const Products = () => {
           options,
           variants,
           images,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create product');
+      if (error) {
+        throw new Error(error.message || 'Failed to create product');
       }
 
       toast({
@@ -221,11 +219,12 @@ const Products = () => {
     if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
-      const response = await fetch(`/api/shopify/products/${productId}`, {
+      const { error } = await supabase.functions.invoke('shopify-products', {
         method: 'DELETE',
+        body: { productId },
       });
 
-      if (!response.ok) throw new Error('Failed to delete product');
+      if (error) throw error;
 
       toast({
         title: "Success",

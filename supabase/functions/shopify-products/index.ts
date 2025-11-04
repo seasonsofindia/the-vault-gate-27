@@ -38,10 +38,6 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const path = url.pathname.split('/');
-    const productId = path[path.length - 1];
-
     if (req.method === 'GET') {
       console.log('Fetching products from Shopify');
       const data = await shopifyRequest('products.json', 'GET');
@@ -63,7 +59,17 @@ serve(async (req) => {
       });
     }
 
-    if (req.method === 'DELETE' && productId) {
+    if (req.method === 'DELETE') {
+      const body = await req.json();
+      const productId = body.productId;
+      
+      if (!productId) {
+        return new Response(JSON.stringify({ error: 'Product ID is required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       console.log(`Deleting product ${productId} from Shopify`);
       await shopifyRequest(`products/${productId}.json`, 'DELETE');
       
