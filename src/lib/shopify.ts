@@ -1,7 +1,7 @@
 const SHOPIFY_API_VERSION = '2025-07';
 const SHOPIFY_STORE_PERMANENT_DOMAIN = 'igux9j-6r.myshopify.com';
 const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
-const SHOPIFY_STOREFRONT_TOKEN = '9348cd4e99b0fd881b402adfb155548a';
+const SHOPIFY_STOREFRONT_TOKEN = '02ceaf641e029e1c3a2254abe9dc12b0';
 
 export interface ShopifyProduct {
   node: {
