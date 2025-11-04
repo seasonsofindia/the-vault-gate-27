@@ -93,22 +93,66 @@ const Shop = () => {
 
   const loadProducts = async () => {
     try {
-      // Fetch products from database
-      const { data: dbProducts, error } = await (supabase as any)
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Fetch products from Shopify
+      const { data, error } = await supabase.functions.invoke('shopify-products', {
+        method: 'GET',
+      });
 
       if (error) throw error;
 
-      // Convert database products to Shopify format for component compatibility
-      const formattedProducts = (dbProducts || []).map(convertToShopifyFormat);
+      // Convert Shopify Admin API format to Storefront API format
+      const formattedProducts = (data.products || []).map((product: any) => ({
+        node: {
+          id: product.id.toString(),
+          title: product.title,
+          description: product.body_html || '',
+          handle: product.handle,
+          productType: product.product_type || '',
+          priceRange: {
+            minVariantPrice: {
+              amount: product.variants[0]?.price || '0',
+              currencyCode: 'INR'
+            }
+          },
+          images: {
+            edges: (product.images || []).map((img: any) => ({
+              node: {
+                url: img.src,
+                altText: img.alt || product.title
+              }
+            }))
+          },
+          variants: {
+            edges: (product.variants || []).map((variant: any) => ({
+              node: {
+                id: variant.id.toString(),
+                title: variant.title,
+                price: {
+                  amount: variant.price,
+                  currencyCode: 'INR'
+                },
+                availableForSale: true,
+                selectedOptions: [
+                  variant.option1 && { name: product.options[0]?.name || 'Option', value: variant.option1 },
+                  variant.option2 && { name: product.options[1]?.name || 'Option', value: variant.option2 },
+                  variant.option3 && { name: product.options[2]?.name || 'Option', value: variant.option3 }
+                ].filter(Boolean)
+              }
+            }))
+          },
+          options: (product.options || []).map((opt: any) => ({
+            name: opt.name,
+            values: opt.values
+          }))
+        }
+      }));
+      
       setProducts(formattedProducts);
       setFilteredProducts(formattedProducts);
     } catch (error: any) {
       toast({
         title: "Error Loading Products",
-        description: error.message,
+        description: error.message || "Failed to fetch products from Shopify",
         variant: "destructive",
       });
     } finally {
