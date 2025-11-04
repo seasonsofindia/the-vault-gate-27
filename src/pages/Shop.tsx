@@ -94,58 +94,82 @@ const Shop = () => {
   const loadProducts = async () => {
     try {
       // Fetch products from Shopify
-      const { data, error } = await supabase.functions.invoke('shopify-products', {
+      const { data: shopifyData, error: shopifyError } = await supabase.functions.invoke('shopify-products', {
         method: 'GET',
       });
 
-      if (error) throw error;
+      if (shopifyError) throw shopifyError;
 
-      // Convert Shopify Admin API format to Storefront API format
-      const formattedProducts = (data.products || []).map((product: any) => ({
-        node: {
-          id: product.id.toString(),
-          title: product.title,
-          description: product.body_html || '',
-          handle: product.handle,
-          productType: product.product_type || '',
-          priceRange: {
-            minVariantPrice: {
-              amount: product.variants[0]?.price || '0',
-              currencyCode: 'INR'
-            }
-          },
-          images: {
-            edges: (product.images || []).map((img: any) => ({
-              node: {
-                url: img.src,
-                altText: img.alt || product.title
+      // Fetch products from local DB for additional metadata (featured, discount, etc.)
+      const { data: dbProducts, error: dbError } = await (supabase as any)
+        .from("products")
+        .select("*");
+
+      if (dbError) throw dbError;
+
+      // Create a map of DB products by SKU for easy lookup
+      const dbProductMap = new Map(
+        (dbProducts || []).map((p: any) => [p.sku, p])
+      );
+
+      // Convert Shopify Admin API format to Storefront API format and merge with DB data
+      const formattedProducts = (shopifyData.products || []).map((product: any) => {
+        // Get the first variant's SKU to match with DB
+        const variantSku = product.variants[0]?.sku;
+        const dbProduct = variantSku ? dbProductMap.get(variantSku) : null;
+
+        return {
+          node: {
+            id: product.id.toString(),
+            title: product.title,
+            description: product.body_html || '',
+            handle: product.handle,
+            productType: product.product_type || '',
+            priceRange: {
+              minVariantPrice: {
+                amount: product.variants[0]?.price || '0',
+                currencyCode: 'INR'
               }
-            }))
-          },
-          variants: {
-            edges: (product.variants || []).map((variant: any) => ({
-              node: {
-                id: variant.id.toString(),
-                title: variant.title,
-                price: {
-                  amount: variant.price,
-                  currencyCode: 'INR'
-                },
-                availableForSale: true,
-                selectedOptions: [
-                  variant.option1 && { name: product.options[0]?.name || 'Option', value: variant.option1 },
-                  variant.option2 && { name: product.options[1]?.name || 'Option', value: variant.option2 },
-                  variant.option3 && { name: product.options[2]?.name || 'Option', value: variant.option3 }
-                ].filter(Boolean)
-              }
-            }))
-          },
-          options: (product.options || []).map((opt: any) => ({
-            name: opt.name,
-            values: opt.values
-          }))
-        }
-      }));
+            },
+            images: {
+              edges: (product.images || []).map((img: any) => ({
+                node: {
+                  url: img.src,
+                  altText: img.alt || product.title
+                }
+              }))
+            },
+            variants: {
+              edges: (product.variants || []).map((variant: any) => ({
+                node: {
+                  id: variant.id.toString(),
+                  title: variant.title,
+                  sku: variant.sku,
+                  price: {
+                    amount: variant.price,
+                    currencyCode: 'INR'
+                  },
+                  availableForSale: true,
+                  selectedOptions: [
+                    variant.option1 && { name: product.options[0]?.name || 'Option', value: variant.option1 },
+                    variant.option2 && { name: product.options[1]?.name || 'Option', value: variant.option2 },
+                    variant.option3 && { name: product.options[2]?.name || 'Option', value: variant.option3 }
+                  ].filter(Boolean)
+                }
+              }))
+            },
+            options: (product.options || []).map((opt: any) => ({
+              name: opt.name,
+              values: opt.values
+            })),
+            // Add DB metadata if available
+            featured: (dbProduct as any)?.featured || false,
+            discount: (dbProduct as any)?.discount || 0,
+            dbStock: (dbProduct as any)?.stock,
+            dbCategory: (dbProduct as any)?.category
+          }
+        };
+      });
       
       setProducts(formattedProducts);
       setFilteredProducts(formattedProducts);
