@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, ArrowLeft, Pencil, Trash2, Upload } from "lucide-react";
+import { Plus, ArrowLeft, Pencil, Trash2, Upload, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -305,6 +305,15 @@ const Products = () => {
             VAULT 27 <span className="text-primary">PRODUCTS</span>
           </h1>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={fetchProducts}
+              disabled={isLoading}
+              className="border-primary text-primary hover:bg-primary hover:text-black"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Sync Products
+            </Button>
             <Button
               variant="outline"
               onClick={async () => {
