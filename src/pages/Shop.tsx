@@ -93,54 +93,63 @@ const Shop = () => {
 
   const loadProducts = async () => {
     try {
-      // Fetch products from Shopify
-      const { data: shopifyData, error: shopifyError } = await supabase.functions.invoke('shopify-products', {
-        method: 'GET',
-      });
-
-      if (shopifyError) throw shopifyError;
-
-      // Fetch products from local DB for additional metadata (featured, discount, etc.)
+      setLoading(true);
+      
+      // Fetch products from local DB first
       const { data: dbProducts, error: dbError } = await (supabase as any)
         .from("products")
         .select("*");
 
       if (dbError) throw dbError;
 
-      // Create a map of DB products by SKU for easy lookup
-      const dbProductMap = new Map(
-        (dbProducts || []).map((p: any) => [p.sku, p])
+      // If DB is empty, return early (user needs to sync first)
+      if (!dbProducts || dbProducts.length === 0) {
+        setProducts([]);
+        setFilteredProducts([]);
+        return;
+      }
+
+      // Fetch products from Shopify to get complete details
+      const { data: shopifyData, error: shopifyError } = await supabase.functions.invoke('shopify-products', {
+        method: 'GET',
+      });
+
+      if (shopifyError) throw shopifyError;
+
+      // Create a map of Shopify products by SKU for easy lookup
+      const shopifyProductMap = new Map(
+        (shopifyData.products || []).map((p: any) => [p.variants[0]?.sku, p])
       );
 
-      // Convert Shopify Admin API format to Storefront API format and merge with DB data
-      const formattedProducts = (shopifyData.products || []).map((product: any) => {
-        // Get the first variant's SKU to match with DB
-        const variantSku = product.variants[0]?.sku;
-        const dbProduct = variantSku ? dbProductMap.get(variantSku) : null;
+      // Convert DB products to display format with Shopify data
+      const formattedProducts = dbProducts.map((dbProduct: any) => {
+        const shopifyProduct: any = shopifyProductMap.get(dbProduct.sku);
+        
+        if (!shopifyProduct) return null;
 
         return {
           node: {
-            id: product.id.toString(),
-            title: product.title,
-            description: product.body_html || '',
-            handle: product.handle,
-            productType: product.product_type || '',
+            id: (shopifyProduct.id as number).toString(),
+            title: shopifyProduct.title as string,
+            description: (shopifyProduct.body_html as string) || '',
+            handle: shopifyProduct.handle as string,
+            productType: dbProduct.category,
             priceRange: {
               minVariantPrice: {
-                amount: product.variants[0]?.price || '0',
+                amount: shopifyProduct.variants[0]?.price || '0',
                 currencyCode: 'INR'
               }
             },
             images: {
-              edges: (product.images || []).map((img: any) => ({
+              edges: (shopifyProduct.images || []).map((img: any) => ({
                 node: {
                   url: img.src,
-                  altText: img.alt || product.title
+                  altText: img.alt || shopifyProduct.title
                 }
               }))
             },
             variants: {
-              edges: (product.variants || []).map((variant: any) => ({
+              edges: (shopifyProduct.variants || []).map((variant: any) => ({
                 node: {
                   id: variant.id.toString(),
                   title: variant.title,
@@ -151,32 +160,31 @@ const Shop = () => {
                   },
                   availableForSale: true,
                   selectedOptions: [
-                    variant.option1 && { name: product.options[0]?.name || 'Option', value: variant.option1 },
-                    variant.option2 && { name: product.options[1]?.name || 'Option', value: variant.option2 },
-                    variant.option3 && { name: product.options[2]?.name || 'Option', value: variant.option3 }
+                    variant.option1 && { name: (shopifyProduct.options as any[])[0]?.name || 'Option', value: variant.option1 },
+                    variant.option2 && { name: (shopifyProduct.options as any[])[1]?.name || 'Option', value: variant.option2 },
+                    variant.option3 && { name: (shopifyProduct.options as any[])[2]?.name || 'Option', value: variant.option3 }
                   ].filter(Boolean)
                 }
               }))
             },
-            options: (product.options || []).map((opt: any) => ({
+            options: ((shopifyProduct.options as any[]) || []).map((opt: any) => ({
               name: opt.name,
               values: opt.values
             })),
-            // Add DB metadata if available
-            featured: (dbProduct as any)?.featured || false,
-            discount: (dbProduct as any)?.discount || 0,
-            dbStock: (dbProduct as any)?.stock,
-            dbCategory: (dbProduct as any)?.category
+            featured: dbProduct.featured || false,
+            discount: dbProduct.discount || 0,
+            dbStock: dbProduct.stock,
+            dbCategory: dbProduct.category
           }
         };
-      });
+      }).filter(Boolean);
       
       setProducts(formattedProducts);
       setFilteredProducts(formattedProducts);
     } catch (error: any) {
       toast({
         title: "Error Loading Products",
-        description: error.message || "Failed to fetch products from Shopify",
+        description: error.message || "Failed to fetch products",
         variant: "destructive",
       });
     } finally {

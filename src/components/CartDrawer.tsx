@@ -31,8 +31,8 @@ export const CartDrawer = () => {
       await createCheckout();
       const checkoutUrl = useCartStore.getState().checkoutUrl;
       if (checkoutUrl) {
-        window.open(checkoutUrl, '_blank');
-        setIsOpen(false);
+        // Redirect to Shopify checkout in the same window
+        window.location.href = checkoutUrl;
       }
     } catch (error) {
       console.error('Checkout failed:', error);
@@ -153,8 +153,7 @@ export const CartDrawer = () => {
                     </>
                   ) : (
                     <>
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      Checkout with Shopify
+                      Proceed to Checkout
                     </>
                   )}
                 </Button>

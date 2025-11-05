@@ -104,17 +104,29 @@ const Products = () => {
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('shopify-products', {
-        method: 'GET',
+      const { data, error } = await supabase.functions.invoke('sync-shopify-products', {
+        method: 'POST',
       });
       
       if (error) throw error;
       
-      setProducts(data.products || []);
+      toast({
+        title: "Products Synced",
+        description: `Successfully synced ${data.count || 0} products from Shopify`,
+      });
+      
+      // Now fetch from Shopify to display
+      const { data: shopifyData, error: shopifyError } = await supabase.functions.invoke('shopify-products', {
+        method: 'GET',
+      });
+      
+      if (shopifyError) throw shopifyError;
+      
+      setProducts(shopifyData.products || []);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch products from Shopify",
+        description: error.message || "Failed to sync products from Shopify",
         variant: "destructive",
       });
       setProducts([]);
