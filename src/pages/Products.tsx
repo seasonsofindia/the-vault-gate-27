@@ -546,20 +546,22 @@ const Products = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                 {products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.title}</TableCell>
                     <TableCell>{product.product_type}</TableCell>
                     <TableCell>${product.variants[0]?.price || '0.00'}</TableCell>
                     <TableCell>{product.variants.length}</TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(product.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(product.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

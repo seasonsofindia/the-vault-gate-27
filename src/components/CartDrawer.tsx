@@ -27,13 +27,30 @@ export const CartDrawer = () => {
   const totalPrice = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
 
   const handleCheckout = async () => {
+    if (items.length === 0) {
+      toast.error("Cart is empty", {
+        description: "Add some items to your cart first"
+      });
+      return;
+    }
+
     try {
+      console.log('Creating checkout with items:', items);
       await createCheckout();
-      const checkoutUrl = useCartStore.getState().checkoutUrl;
-      if (checkoutUrl) {
-        // Redirect to Shopify checkout in the same window
-        window.location.href = checkoutUrl;
-      }
+      
+      // Give it a moment to set the checkout URL
+      setTimeout(() => {
+        const checkoutUrl = useCartStore.getState().checkoutUrl;
+        console.log('Checkout URL:', checkoutUrl);
+        
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl;
+        } else {
+          toast.error("Failed to get checkout URL", {
+            description: "Please try again"
+          });
+        }
+      }, 500);
     } catch (error) {
       console.error('Checkout failed:', error);
       toast.error("Failed to create checkout", {

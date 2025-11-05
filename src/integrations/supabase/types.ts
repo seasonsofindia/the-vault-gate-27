@@ -62,10 +62,53 @@ export type Database = {
         }
         Relationships: []
       }
+      product_variants: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          product_id: string
+          shopify_variant_id: string | null
+          size: string | null
+          sku: string | null
+          stock: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          product_id: string
+          shopify_variant_id?: string | null
+          size?: string | null
+          sku?: string | null
+          stock?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          product_id?: string
+          shopify_variant_id?: string | null
+          size?: string | null
+          sku?: string | null
+          stock?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string
-          colors: string[]
           created_at: string | null
           description: string
           discount: number | null
@@ -74,14 +117,12 @@ export type Database = {
           images: string[]
           name: string
           price: number
-          sizes: string[]
           sku: string | null
           stock: number | null
           updated_at: string | null
         }
         Insert: {
           category: string
-          colors: string[]
           created_at?: string | null
           description: string
           discount?: number | null
@@ -90,14 +131,12 @@ export type Database = {
           images: string[]
           name: string
           price: number
-          sizes: string[]
           sku?: string | null
           stock?: number | null
           updated_at?: string | null
         }
         Update: {
           category?: string
-          colors?: string[]
           created_at?: string | null
           description?: string
           discount?: number | null
@@ -106,7 +145,6 @@ export type Database = {
           images?: string[]
           name?: string
           price?: number
-          sizes?: string[]
           sku?: string | null
           stock?: number | null
           updated_at?: string | null

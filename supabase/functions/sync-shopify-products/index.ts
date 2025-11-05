@@ -54,44 +54,111 @@ Deno.serve(async (req) => {
       throw deleteError;
     }
 
-    // Insert products into database
-    const dbProducts = products.map((product: any) => {
+    // Upsert products into database (update if name matches, insert if new)
+    for (const product of products) {
       const firstVariant = product.variants[0];
-      const sizes = product.options.find((opt: any) => opt.name.toLowerCase() === 'size')?.values || [];
-      const colors = product.options.find((opt: any) => opt.name.toLowerCase() === 'color')?.values || [];
       
-      return {
-        sku: firstVariant.sku,
-        name: product.title,
-        description: product.body_html || '',
-        category: product.product_type || 'Uncategorized',
-        price: parseFloat(firstVariant.price),
-        stock: firstVariant.inventory_quantity || 0,
-        sizes: sizes,
-        colors: colors,
-        images: product.images.map((img: any) => img.src),
-        featured: false,
-        discount: 0,
-      };
-    });
+      // Check if product exists by name
+      const { data: existingProduct } = await supabaseClient
+        .from('products')
+        .select('id, name, description, category, price, featured, discount, stock, sku')
+        .eq('name', product.title)
+        .maybeSingle();
 
-    const { data: insertedProducts, error: insertError } = await supabaseClient
-      .from('products')
-      .insert(dbProducts)
-      .select();
+      let productId;
+      
+      if (existingProduct) {
+        // Product exists - only update SKU and images if they're not set
+        const updates: any = {};
+        if (!existingProduct.sku) {
+          updates.sku = firstVariant.sku;
+        }
+        
+        const { data: updatedProduct } = await supabaseClient
+          .from('products')
+          .update(updates)
+          .eq('id', existingProduct.id)
+          .select('id')
+          .single();
+        
+        productId = existingProduct.id;
+        console.log(`Updated existing product: ${product.title}`);
+      } else {
+        // New product - insert all data
+        const { data: newProduct, error: insertError } = await supabaseClient
+          .from('products')
+          .insert({
+            sku: firstVariant.sku,
+            name: product.title,
+            description: product.body_html || '',
+            category: product.product_type || 'Uncategorized',
+            price: parseFloat(firstVariant.price),
+            stock: 0, // Stock is managed at variant level now
+            images: product.images.map((img: any) => img.src),
+            featured: false,
+            discount: 0,
+          })
+          .select('id')
+          .single();
 
-    if (insertError) {
-      console.error('Error inserting products:', insertError);
-      throw insertError;
+        if (insertError) {
+          console.error('Error inserting product:', insertError);
+          continue;
+        }
+
+        productId = newProduct.id;
+        console.log(`Inserted new product: ${product.title}`);
+      }
+
+      // Sync variants
+      for (const variant of product.variants) {
+        const size = variant.option1 || null;
+        const color = variant.option2 || null;
+
+        // Check if variant exists
+        const { data: existingVariant } = await supabaseClient
+          .from('product_variants')
+          .select('id, stock')
+          .eq('product_id', productId)
+          .eq('shopify_variant_id', variant.id.toString())
+          .maybeSingle();
+
+        if (existingVariant) {
+          // Variant exists - preserve stock, only update SKU if missing
+          const variantUpdates: any = {};
+          if (variant.sku) {
+            variantUpdates.sku = variant.sku;
+          }
+          variantUpdates.size = size;
+          variantUpdates.color = color;
+
+          await supabaseClient
+            .from('product_variants')
+            .update(variantUpdates)
+            .eq('id', existingVariant.id);
+        } else {
+          // New variant - insert with initial stock
+          await supabaseClient
+            .from('product_variants')
+            .insert({
+              product_id: productId,
+              size,
+              color,
+              stock: variant.inventory_quantity || 0,
+              sku: variant.sku,
+              shopify_variant_id: variant.id.toString(),
+            });
+        }
+      }
     }
 
-    console.log(`Successfully synced ${insertedProducts?.length || 0} products to database`);
+    console.log(`Successfully synced ${products.length} products to database`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        count: insertedProducts?.length || 0,
-        products: insertedProducts 
+        count: products.length,
+        message: 'Products synced successfully'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -101,8 +168,9 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error syncing products:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 

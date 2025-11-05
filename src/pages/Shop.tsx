@@ -95,20 +95,6 @@ const Shop = () => {
     try {
       setLoading(true);
       
-      // Fetch products from local DB first
-      const { data: dbProducts, error: dbError } = await (supabase as any)
-        .from("products")
-        .select("*");
-
-      if (dbError) throw dbError;
-
-      // If DB is empty, return early (user needs to sync first)
-      if (!dbProducts || dbProducts.length === 0) {
-        setProducts([]);
-        setFilteredProducts([]);
-        return;
-      }
-
       // Fetch products from Shopify to get complete details
       const { data: shopifyData, error: shopifyError } = await supabase.functions.invoke('shopify-products', {
         method: 'GET',
@@ -116,16 +102,31 @@ const Shop = () => {
 
       if (shopifyError) throw shopifyError;
 
-      // Create a map of Shopify products by SKU for easy lookup
-      const shopifyProductMap = new Map(
-        (shopifyData.products || []).map((p: any) => [p.variants[0]?.sku, p])
+      // Fetch products from local DB with variants
+      const { data: dbProducts, error: dbError } = await (supabase as any)
+        .from("products")
+        .select(`
+          *,
+          product_variants (*)
+        `);
+
+      if (dbError) throw dbError;
+
+      // Create a map of DB products by name for easy lookup
+      const dbProductMap = new Map(
+        (dbProducts || []).map((p: any) => [p.name, p])
       );
 
-      // Convert DB products to display format with Shopify data
-      const formattedProducts = dbProducts.map((dbProduct: any) => {
-        const shopifyProduct: any = shopifyProductMap.get(dbProduct.sku);
+      // Convert Shopify products to display format with DB data
+      const shopifyProducts = shopifyData?.products || [];
+      const formattedProducts = shopifyProducts.map((shopifyProduct: any) => {
+        const dbProduct: any = dbProductMap.get(shopifyProduct.title);
         
-        if (!shopifyProduct) return null;
+        // Calculate total stock from variants
+        const totalStock = dbProduct?.product_variants?.reduce(
+          (sum: number, variant: any) => sum + (variant.stock || 0), 
+          0
+        ) || 0;
 
         return {
           node: {
@@ -133,11 +134,11 @@ const Shop = () => {
             title: shopifyProduct.title as string,
             description: (shopifyProduct.body_html as string) || '',
             handle: shopifyProduct.handle as string,
-            productType: dbProduct.category,
+            productType: dbProduct?.category || shopifyProduct.product_type || 'Uncategorized',
             priceRange: {
               minVariantPrice: {
                 amount: shopifyProduct.variants[0]?.price || '0',
-                currencyCode: 'INR'
+                currencyCode: 'USD'
               }
             },
             images: {
@@ -156,7 +157,7 @@ const Shop = () => {
                   sku: variant.sku,
                   price: {
                     amount: variant.price,
-                    currencyCode: 'INR'
+                    currencyCode: 'USD'
                   },
                   availableForSale: true,
                   selectedOptions: [
@@ -171,17 +172,18 @@ const Shop = () => {
               name: opt.name,
               values: opt.values
             })),
-            featured: dbProduct.featured || false,
-            discount: dbProduct.discount || 0,
-            dbStock: dbProduct.stock,
-            dbCategory: dbProduct.category
+            featured: dbProduct?.featured || false,
+            discount: dbProduct?.discount || 0,
+            dbStock: totalStock,
+            dbCategory: dbProduct?.category || shopifyProduct.product_type
           }
         };
-      }).filter(Boolean);
+      });
       
       setProducts(formattedProducts);
       setFilteredProducts(formattedProducts);
     } catch (error: any) {
+      console.error('Error loading products:', error);
       toast({
         title: "Error Loading Products",
         description: error.message || "Failed to fetch products",
