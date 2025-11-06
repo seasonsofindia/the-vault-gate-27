@@ -35,6 +35,7 @@ interface ShopifyProductDisplay {
     title: string;
     price: string;
     sku: string;
+    inventory_quantity: number;
     option1: string | null;
     option2: string | null;
     option3: string | null;
@@ -69,6 +70,7 @@ const Products = () => {
     sizes: "S,M,L,XL",
     colors: "Black,White",
     images: "",
+    stock: "10,10,10,10", // Stock levels matching size order
   });
 
   useEffect(() => {
@@ -142,6 +144,12 @@ const Products = () => {
       const sizes = formData.sizes.split(",").map(s => s.trim()).filter(Boolean);
       const colors = formData.colors.split(",").map(c => c.trim()).filter(Boolean);
       const imageUrls = formData.images.split(",").map(i => i.trim()).filter(Boolean);
+      const stockLevels = formData.stock.split(",").map(s => parseInt(s.trim())).filter(s => !isNaN(s));
+
+      // Validate stock levels match sizes
+      if (stockLevels.length !== sizes.length) {
+        throw new Error("Number of stock levels must match number of sizes");
+      }
 
       // Create options and variants
       const options = [];
@@ -189,9 +197,12 @@ const Products = () => {
         alt: formData.title 
       }));
 
-      // Create product using Shopify edge function
-      const { data, error } = await supabase.functions.invoke('shopify-products', {
-        method: 'POST',
+      // Create or update product using Shopify edge function
+      const method = editingProduct ? 'PUT' : 'POST';
+      const endpoint = editingProduct ? `shopify-products/${editingProduct.id}` : 'shopify-products';
+      
+      const { data, error } = await supabase.functions.invoke(endpoint, {
+        method,
         body: {
           title: formData.title,
           body_html: formData.body,
@@ -210,7 +221,7 @@ const Products = () => {
 
       toast({
         title: "Success",
-        description: "Product created successfully in Shopify",
+        description: `Product ${editingProduct ? 'updated' : 'created'} successfully in Shopify`,
       });
       
       setIsDialogOpen(false);
@@ -297,8 +308,41 @@ const Products = () => {
       sizes: "S,M,L,XL",
       colors: "Black,White",
       images: "",
+      stock: "10,10,10,10",
     });
     setEditingProduct(null);
+  };
+
+  const handleEdit = (product: ShopifyProductDisplay) => {
+    // Extract sizes and stock from variants
+    const sizeOption = product.options.find(opt => opt.name.toLowerCase() === 'size');
+    const sizes = sizeOption ? sizeOption.values.join(',') : '';
+    
+    // Get stock levels for each size from variants
+    const stockLevels = sizeOption ? sizeOption.values.map(size => {
+      const variant = product.variants.find(v => 
+        v.option1 === size || v.option2 === size
+      );
+      return variant?.inventory_quantity || 0;
+    }) : [];
+    
+    const colorOption = product.options.find(opt => opt.name.toLowerCase() === 'color');
+    
+    setFormData({
+      title: product.title,
+      body: product.body_html || '',
+      price: product.variants[0]?.price || '',
+      vendor: product.vendor || '',
+      product_type: product.product_type || '',
+      tags: product.tags || '',
+      sizes: sizes || 'S,M,L,XL',
+      colors: colorOption ? colorOption.values.join(',') : 'Black,White',
+      images: product.images.map(img => img.src).join(','),
+      stock: stockLevels.join(',') || '10,10,10,10',
+    });
+    
+    setEditingProduct(product);
+    setIsDialogOpen(true);
   };
 
   return (
@@ -419,7 +463,7 @@ const Products = () => {
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Add Product to Shopify</DialogTitle>
+                  <DialogTitle>{editingProduct ? 'Edit Product' : 'Add Product to Shopify'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -503,6 +547,19 @@ const Products = () => {
                     />
                   </div>
                   <div>
+                    <Label htmlFor="stock">Stock Levels (comma-separated, one per size)</Label>
+                    <Input
+                      id="stock"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                      placeholder="10,10,10,10"
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Enter stock levels matching the order of sizes above (e.g., for S,M,L,XL enter 10,15,20,25)
+                    </p>
+                  </div>
+                  <div>
                     <Label htmlFor="images">Image URLs (comma-separated)</Label>
                     <Textarea
                       id="images"
@@ -516,7 +573,9 @@ const Products = () => {
                     </p>
                   </div>
                   <Button type="submit" className="w-full" disabled={isProcessing}>
-                    {isProcessing ? "Creating..." : "Create Product in Shopify"}
+                    {isProcessing 
+                      ? (editingProduct ? "Updating..." : "Creating...") 
+                      : (editingProduct ? "Update Product" : "Create Product in Shopify")}
                   </Button>
                 </form>
               </DialogContent>
@@ -541,6 +600,7 @@ const Products = () => {
                   <TableHead>Title</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Price</TableHead>
+                  <TableHead>Stock</TableHead>
                   <TableHead>Variants</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -554,6 +614,14 @@ const Products = () => {
                     <TableCell>{product.variants.length}</TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(product)}
+                          className="bg-primary/10 hover:bg-primary/20"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="destructive"
