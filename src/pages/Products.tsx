@@ -151,78 +151,107 @@ const Products = () => {
         throw new Error("Number of stock levels must match number of sizes");
       }
 
-      // Create options and variants
-      const options = [];
-      if (sizes.length > 0) options.push({ name: "Size", values: sizes });
-      if (colors.length > 0) options.push({ name: "Color", values: colors });
+      if (editingProduct) {
+        // Update existing product in local DB
+        const productData = await supabase
+          .from('products')
+          .select('id')
+          .eq('name', editingProduct.title)
+          .single();
 
-      // Generate variants for all combinations
-      const variants = [];
-      if (sizes.length > 0 && colors.length > 0) {
-        for (const size of sizes) {
+        if (productData.error) throw productData.error;
+
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            name: formData.title,
+            description: formData.body,
+            price: parseFloat(formData.price),
+            category: formData.product_type || 'Merchandise',
+            images: imageUrls,
+            sku: formData.vendor || 'VAULT 27',
+          })
+          .eq('id', productData.data.id);
+
+        if (updateError) throw updateError;
+
+        // Delete existing variants
+        await supabase
+          .from('product_variants')
+          .delete()
+          .eq('product_id', productData.data.id);
+
+        // Insert new variants
+        const variants = [];
+        for (let i = 0; i < sizes.length; i++) {
           for (const color of colors) {
             variants.push({
-              option1: size,
-              option2: color,
-              price: formData.price,
-              sku: `${formData.title.substring(0, 3).toUpperCase()}-${size}-${color}`.replace(/\s+/g, '-'),
+              product_id: productData.data.id,
+              size: sizes[i],
+              color: color,
+              stock: stockLevels[i] || 0,
+              sku: `${formData.title.substring(0, 3).toUpperCase()}-${sizes[i]}-${color}`.replace(/\s+/g, '-'),
             });
           }
         }
-      } else if (sizes.length > 0) {
-        for (const size of sizes) {
-          variants.push({
-            option1: size,
-            price: formData.price,
-            sku: `${formData.title.substring(0, 3).toUpperCase()}-${size}`.replace(/\s+/g, '-'),
-          });
+
+        if (variants.length > 0) {
+          const { error: variantsError } = await supabase
+            .from('product_variants')
+            .insert(variants);
+
+          if (variantsError) throw variantsError;
         }
-      } else if (colors.length > 0) {
-        for (const color of colors) {
-          variants.push({
-            option1: color,
-            price: formData.price,
-            sku: `${formData.title.substring(0, 3).toUpperCase()}-${color}`.replace(/\s+/g, '-'),
-          });
-        }
+
+        toast({
+          title: "Success",
+          description: "Product updated successfully",
+        });
       } else {
-        variants.push({
-          price: formData.price,
+        // Create new product in local DB
+        const { data: newProduct, error: insertError } = await supabase
+          .from('products')
+          .insert({
+            name: formData.title,
+            description: formData.body,
+            price: parseFloat(formData.price),
+            category: formData.product_type || 'Merchandise',
+            images: imageUrls,
+            sku: formData.vendor || 'VAULT 27',
+            stock: 0, // Will be calculated from variants
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        // Insert variants
+        const variants = [];
+        for (let i = 0; i < sizes.length; i++) {
+          for (const color of colors) {
+            variants.push({
+              product_id: newProduct.id,
+              size: sizes[i],
+              color: color,
+              stock: stockLevels[i] || 0,
+              sku: `${formData.title.substring(0, 3).toUpperCase()}-${sizes[i]}-${color}`.replace(/\s+/g, '-'),
+            });
+          }
+        }
+
+        if (variants.length > 0) {
+          const { error: variantsError } = await supabase
+            .from('product_variants')
+            .insert(variants);
+
+          if (variantsError) throw variantsError;
+        }
+
+        toast({
+          title: "Success",
+          description: "Product created successfully",
         });
       }
-
-      // Prepare images
-      const images = imageUrls.map(url => ({ 
-        file_path: url.startsWith('http') ? url : `https://${url}`,
-        alt: formData.title 
-      }));
-
-      // Create or update product using Shopify edge function
-      const method = editingProduct ? 'PUT' : 'POST';
-      const endpoint = editingProduct ? `shopify-products/${editingProduct.id}` : 'shopify-products';
-      
-      const { data, error } = await supabase.functions.invoke(endpoint, {
-        method,
-        body: {
-          title: formData.title,
-          body_html: formData.body,
-          vendor: formData.vendor || 'VAULT 27',
-          product_type: formData.product_type || 'Merchandise',
-          tags: formData.tags,
-          options,
-          variants,
-          images,
-        },
-      });
-
-      if (error) {
-        throw new Error(error.message || 'Failed to create product');
-      }
-
-      toast({
-        title: "Success",
-        description: `Product ${editingProduct ? 'updated' : 'created'} successfully in Shopify`,
-      });
       
       setIsDialogOpen(false);
       resetForm();
@@ -230,7 +259,7 @@ const Products = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to create product",
+        description: error.message || "Failed to save product",
         variant: "destructive",
       });
     } finally {
@@ -313,36 +342,57 @@ const Products = () => {
     setEditingProduct(null);
   };
 
-  const handleEdit = (product: ShopifyProductDisplay) => {
-    // Extract sizes and stock from variants
-    const sizeOption = product.options.find(opt => opt.name.toLowerCase() === 'size');
-    const sizes = sizeOption ? sizeOption.values.join(',') : '';
-    
-    // Get stock levels for each size from variants
-    const stockLevels = sizeOption ? sizeOption.values.map(size => {
-      const variant = product.variants.find(v => 
-        v.option1 === size || v.option2 === size
-      );
-      return variant?.inventory_quantity || 0;
-    }) : [];
-    
-    const colorOption = product.options.find(opt => opt.name.toLowerCase() === 'color');
-    
-    setFormData({
-      title: product.title,
-      body: product.body_html || '',
-      price: product.variants[0]?.price || '',
-      vendor: product.vendor || '',
-      product_type: product.product_type || '',
-      tags: product.tags || '',
-      sizes: sizes || 'S,M,L,XL',
-      colors: colorOption ? colorOption.values.join(',') : 'Black,White',
-      images: product.images.map(img => img.src).join(','),
-      stock: stockLevels.join(',') || '10,10,10,10',
-    });
-    
-    setEditingProduct(product);
-    setIsDialogOpen(true);
+  const handleEdit = async (product: ShopifyProductDisplay) => {
+    try {
+      // Fetch product details from local DB
+      const { data: localProduct, error: productError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('name', product.title)
+        .single();
+
+      if (productError) throw productError;
+
+      // Fetch variants
+      const { data: variants, error: variantsError } = await supabase
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', localProduct.id);
+
+      if (variantsError) throw variantsError;
+
+      // Extract unique sizes and colors
+      const sizes = [...new Set(variants.map(v => v.size))].filter(Boolean);
+      const colors = [...new Set(variants.map(v => v.color))].filter(Boolean);
+      
+      // Get stock levels for each size (take first variant's stock for that size)
+      const stockLevels = sizes.map(size => {
+        const variant = variants.find(v => v.size === size);
+        return variant?.stock || 0;
+      });
+      
+      setFormData({
+        title: localProduct.name,
+        body: localProduct.description || '',
+        price: localProduct.price.toString(),
+        vendor: localProduct.sku || '',
+        product_type: localProduct.category || '',
+        tags: '',
+        sizes: sizes.join(',') || 'S,M,L,XL',
+        colors: colors.join(',') || 'Black,White',
+        images: localProduct.images.join(','),
+        stock: stockLevels.join(',') || '10,10,10,10',
+      });
+      
+      setEditingProduct(product);
+      setIsDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load product details",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -572,11 +622,11 @@ const Products = () => {
                       Enter full URLs to product images
                     </p>
                   </div>
-                  <Button type="submit" className="w-full" disabled={isProcessing}>
-                    {isProcessing 
-                      ? (editingProduct ? "Updating..." : "Creating...") 
-                      : (editingProduct ? "Update Product" : "Create Product in Shopify")}
-                  </Button>
+                    <Button type="submit" className="w-full" disabled={isProcessing}>
+                      {isProcessing 
+                        ? (editingProduct ? "Updating..." : "Creating...") 
+                        : (editingProduct ? "Update Product" : "Create Product")}
+                    </Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -600,7 +650,6 @@ const Products = () => {
                   <TableHead>Title</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Stock</TableHead>
                   <TableHead>Variants</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
