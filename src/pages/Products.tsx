@@ -106,18 +106,6 @@ const Products = () => {
   const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('sync-shopify-products', {
-        method: 'POST',
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Products Synced",
-        description: `Successfully synced ${data.count || 0} products from Shopify`,
-      });
-      
-      // Now fetch from Shopify to display
       const { data: shopifyData, error: shopifyError } = await supabase.functions.invoke('shopify-products', {
         method: 'GET',
       });
@@ -128,10 +116,35 @@ const Products = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to sync products from Shopify",
+        description: error.message || "Failed to fetch products from Shopify",
         variant: "destructive",
       });
       setProducts([]);
+    }
+    setIsLoading(false);
+  };
+
+  const syncProducts = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-shopify-products', {
+        method: 'POST',
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Products Synced",
+        description: `Successfully synced ${data.count || 0} products from Shopify to database`,
+      });
+      
+      fetchProducts();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sync products",
+        variant: "destructive",
+      });
     }
     setIsLoading(false);
   };
@@ -413,7 +426,7 @@ const Products = () => {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={fetchProducts}
+              onClick={syncProducts}
               disabled={isLoading}
               className="border-primary text-primary hover:bg-primary hover:text-black"
             >
