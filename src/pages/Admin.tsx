@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Shield, ArrowLeft, Check, X } from "lucide-react";
+import { Shield, ArrowLeft, Check, X, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -159,6 +159,10 @@ const Admin = () => {
               </h1>
             </div>
           </div>
+          <Button onClick={() => navigate("/products")}>
+            <Package className="w-4 h-4 mr-2" />
+            Manage Products
+          </Button>
         </div>
       </nav>
 

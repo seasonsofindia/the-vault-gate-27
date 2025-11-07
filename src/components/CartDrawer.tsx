@@ -35,26 +35,22 @@ export const CartDrawer = () => {
     }
 
     try {
-      console.log('Creating checkout with items:', items);
       await createCheckout();
+      const checkoutUrl = useCartStore.getState().checkoutUrl;
       
-      // Give it a moment to set the checkout URL
-      setTimeout(() => {
-        const checkoutUrl = useCartStore.getState().checkoutUrl;
-        console.log('Checkout URL:', checkoutUrl);
-        
-        if (checkoutUrl) {
-          window.location.href = checkoutUrl;
-        } else {
-          toast.error("Failed to get checkout URL", {
-            description: "Please try again"
-          });
-        }
-      }, 500);
+      if (checkoutUrl) {
+        window.open(checkoutUrl, '_blank');
+        setIsOpen(false);
+        toast.success("Redirecting to checkout");
+      } else {
+        toast.error("Failed to create checkout", {
+          description: "Please try again"
+        });
+      }
     } catch (error) {
       console.error('Checkout failed:', error);
       toast.error("Failed to create checkout", {
-        description: "Please try again or contact support."
+        description: error instanceof Error ? error.message : "Please try again"
       });
     }
   };
