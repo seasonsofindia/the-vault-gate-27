@@ -164,6 +164,40 @@ const Products = () => {
         throw new Error("Number of stock levels must match number of sizes");
       }
 
+      // Prepare Shopify product data
+      const shopifyVariants = [];
+      for (let i = 0; i < sizes.length; i++) {
+        for (const color of colors) {
+          shopifyVariants.push({
+            option1: sizes[i],
+            option2: color,
+            price: formData.price,
+            inventory_quantity: stockLevels[i] || 0,
+            sku: `${formData.title.substring(0, 3).toUpperCase()}-${sizes[i]}-${color}`.replace(/\s+/g, '-'),
+          });
+        }
+      }
+
+      const shopifyProduct = {
+        title: formData.title,
+        body_html: formData.body,
+        vendor: formData.vendor || 'VAULT 27',
+        product_type: formData.product_type || 'Merchandise',
+        variants: shopifyVariants,
+        options: [
+          { name: 'Size', values: sizes },
+          { name: 'Color', values: colors }
+        ],
+        images: imageUrls.map(url => ({ src: url }))
+      };
+
+      // Create/Update in Shopify first
+      const shopifyResponse = await supabase.functions.invoke('shopify-products', {
+        body: editingProduct ? { ...shopifyProduct, id: editingProduct.id } : shopifyProduct
+      });
+
+      if (shopifyResponse.error) throw shopifyResponse.error;
+
       if (editingProduct) {
         // Update existing product in local DB
         const productData = await supabase
@@ -194,8 +228,10 @@ const Products = () => {
           .delete()
           .eq('product_id', productData.data.id);
 
-        // Insert new variants
+        // Insert new variants with Shopify variant IDs
+        const shopifyVariantIds = shopifyResponse.data?.product?.variants || [];
         const variants = [];
+        let variantIndex = 0;
         for (let i = 0; i < sizes.length; i++) {
           for (const color of colors) {
             variants.push({
@@ -204,7 +240,9 @@ const Products = () => {
               color: color,
               stock: stockLevels[i] || 0,
               sku: `${formData.title.substring(0, 3).toUpperCase()}-${sizes[i]}-${color}`.replace(/\s+/g, '-'),
+              shopify_variant_id: shopifyVariantIds[variantIndex]?.id?.toString() || null,
             });
+            variantIndex++;
           }
         }
 
@@ -218,7 +256,7 @@ const Products = () => {
 
         toast({
           title: "Success",
-          description: "Product updated successfully",
+          description: "Product updated in both DB and Shopify",
         });
       } else {
         // Create new product in local DB
@@ -231,15 +269,17 @@ const Products = () => {
             category: formData.product_type || 'Merchandise',
             images: imageUrls,
             sku: formData.vendor || 'VAULT 27',
-            stock: 0, // Will be calculated from variants
+            stock: 0,
           })
           .select()
           .single();
 
         if (insertError) throw insertError;
 
-        // Insert variants
+        // Insert variants with Shopify variant IDs
+        const shopifyVariantIds = shopifyResponse.data?.product?.variants || [];
         const variants = [];
+        let variantIndex = 0;
         for (let i = 0; i < sizes.length; i++) {
           for (const color of colors) {
             variants.push({
@@ -248,7 +288,9 @@ const Products = () => {
               color: color,
               stock: stockLevels[i] || 0,
               sku: `${formData.title.substring(0, 3).toUpperCase()}-${sizes[i]}-${color}`.replace(/\s+/g, '-'),
+              shopify_variant_id: shopifyVariantIds[variantIndex]?.id?.toString() || null,
             });
+            variantIndex++;
           }
         }
 
@@ -262,7 +304,7 @@ const Products = () => {
 
         toast({
           title: "Success",
-          description: "Product created successfully",
+          description: "Product created in both DB and Shopify",
         });
       }
       
@@ -270,6 +312,7 @@ const Products = () => {
       resetForm();
       fetchProducts();
     } catch (error: any) {
+      console.error('Product save error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to save product",
@@ -281,25 +324,50 @@ const Products = () => {
   };
 
   const handleDelete = async (productId: number) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+    if (!confirm("Are you sure you want to delete this product from both Shopify and your database?")) return;
 
     try {
-      const { error } = await supabase.functions.invoke('shopify-products', {
-        method: 'DELETE',
+      // First delete from Shopify
+      const { error: shopifyError } = await supabase.functions.invoke('shopify-products', {
         body: { productId },
       });
 
-      if (error) throw error;
+      if (shopifyError) throw shopifyError;
+
+      // Find and delete from local DB by looking up variants with this Shopify product ID
+      // We need to find the product through its variants since we store shopify_variant_id
+      const { data: variants } = await supabase
+        .from('product_variants')
+        .select('product_id')
+        .like('shopify_variant_id', `%${productId}%`)
+        .limit(1);
+
+      if (variants && variants.length > 0) {
+        const productDbId = variants[0].product_id;
+        
+        // Delete variants first
+        await supabase
+          .from('product_variants')
+          .delete()
+          .eq('product_id', productDbId);
+        
+        // Then delete product
+        await supabase
+          .from('products')
+          .delete()
+          .eq('id', productDbId);
+      }
 
       toast({
         title: "Success",
-        description: "Product deleted successfully",
+        description: "Product deleted from both Shopify and database",
       });
       fetchProducts();
     } catch (error: any) {
+      console.error('Delete error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete product",
         variant: "destructive",
       });
     }

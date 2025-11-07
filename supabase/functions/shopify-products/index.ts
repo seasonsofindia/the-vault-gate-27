@@ -48,15 +48,26 @@ serve(async (req) => {
 
     if (req.method === 'POST') {
       const body = await req.json();
-      console.log('Creating product in Shopify:', body);
+      console.log('Creating/updating product in Shopify:', body);
       
-      const data = await shopifyRequest('products.json', 'POST', {
-        product: body,
-      });
-      
-      return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      // If updating (has id), use PUT, otherwise POST
+      if (body.id) {
+        const productId = body.id;
+        delete body.id;
+        const data = await shopifyRequest(`products/${productId}.json`, 'PUT', {
+          product: body,
+        });
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } else {
+        const data = await shopifyRequest('products.json', 'POST', {
+          product: body,
+        });
+        return new Response(JSON.stringify(data), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     if (req.method === 'DELETE') {
