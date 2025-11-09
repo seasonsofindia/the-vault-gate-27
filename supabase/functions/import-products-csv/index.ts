@@ -139,21 +139,124 @@ Deno.serve(async (req) => {
 
     console.log(`Parsed ${products.length} products from CSV`);
 
-    // Insert products into database
-    const { data, error } = await supabase
-      .from('products')
-      .insert(products)
-      .select();
+    // Shopify Admin API credentials
+    const SHOPIFY_ADMIN_API_KEY = Deno.env.get('SHOPIFY_ADMIN_API_KEY') || '';
+    const SHOPIFY_STORE_DOMAIN = Deno.env.get('SHOPIFY_STORE_DOMAIN') || '';
+    const SHOPIFY_API_VERSION = '2025-07';
 
-    if (error) {
-      throw error;
+    let createdCount = 0;
+
+    // Insert products into database AND Shopify
+    for (const product of products) {
+      try {
+        // Create in Shopify first
+        const shopifyVariants = [];
+        for (const size of product.sizes) {
+          for (const color of product.colors) {
+            shopifyVariants.push({
+              option1: size,
+              option2: color,
+              price: product.price.toString(),
+              inventory_quantity: product.stock,
+              sku: `${product.name.substring(0, 3).toUpperCase()}-${size}-${color}`.replace(/\s+/g, '-'),
+            });
+          }
+        }
+
+        const shopifyProduct = {
+          title: product.name,
+          body_html: product.description,
+          vendor: 'VAULT 27',
+          product_type: product.category,
+          variants: shopifyVariants,
+          options: [
+            { name: 'Size', values: product.sizes },
+            { name: 'Color', values: product.colors }
+          ],
+          images: product.images.map((url: string) => ({ src: url }))
+        };
+
+        const shopifyResponse = await fetch(
+          `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/products.json`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Shopify-Access-Token': SHOPIFY_ADMIN_API_KEY,
+            },
+            body: JSON.stringify({ product: shopifyProduct }),
+          }
+        );
+
+        if (!shopifyResponse.ok) {
+          const errorText = await shopifyResponse.text();
+          console.error(`Shopify API error for ${product.name}:`, errorText);
+          continue;
+        }
+
+        const shopifyData = await shopifyResponse.json();
+        console.log('Created product in Shopify:', shopifyData.product.id);
+
+        // Insert into database
+        const { data: dbProduct, error: dbError } = await supabase
+          .from('products')
+          .insert({
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            category: product.category,
+            images: product.images,
+            featured: product.featured,
+            stock: 0,
+            discount: product.discount || 0,
+          })
+          .select()
+          .single();
+
+        if (dbError) {
+          console.error('DB insert error:', dbError);
+          continue;
+        }
+
+        // Insert variants with Shopify IDs
+        const variants = [];
+        let variantIndex = 0;
+        for (const size of product.sizes) {
+          for (const color of product.colors) {
+            const shopifyVariant = shopifyData.product.variants[variantIndex];
+            variants.push({
+              product_id: dbProduct.id,
+              size,
+              color,
+              stock: product.stock,
+              sku: `${product.name.substring(0, 3).toUpperCase()}-${size}-${color}`.replace(/\s+/g, '-'),
+              shopify_variant_id: shopifyVariant?.id?.toString() || null,
+            });
+            variantIndex++;
+          }
+        }
+
+        if (variants.length > 0) {
+          const { error: variantsError } = await supabase
+            .from('product_variants')
+            .insert(variants);
+
+          if (variantsError) {
+            console.error('Variants insert error:', variantsError);
+          }
+        }
+
+        createdCount++;
+      } catch (error) {
+        console.error('Error processing product:', product.name, error);
+      }
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        count: products.length,
-        products: data 
+        count: createdCount,
+        message: `Successfully imported ${createdCount} products to both database and Shopify`
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
