@@ -140,8 +140,8 @@ Deno.serve(async (req) => {
     console.log(`Parsed ${products.length} products from CSV`);
 
     // Shopify Admin API credentials
-    const SHOPIFY_ADMIN_API_KEY = Deno.env.get('SHOPIFY_ADMIN_API_KEY') || '';
-    const SHOPIFY_STORE_DOMAIN = Deno.env.get('SHOPIFY_STORE_DOMAIN') || '';
+    const SHOPIFY_ADMIN_API_KEY = Deno.env.get('SHOPIFY_ACCESS_TOKEN') || '';
+    const SHOPIFY_STORE_DOMAIN = 'vault27-uzutu.myshopify.com';
     const SHOPIFY_API_VERSION = '2025-07';
 
     let createdCount = 0;

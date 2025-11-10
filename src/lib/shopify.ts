@@ -203,6 +203,9 @@ export async function createStorefrontCheckout(items: CartItem[]): Promise<strin
     const cartData = await storefrontApiRequest(CART_CREATE_MUTATION, {
       input: {
         lines,
+        buyerIdentity: {
+          countryCode: 'IN',
+        },
       },
     });
 

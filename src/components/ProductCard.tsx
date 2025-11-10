@@ -37,7 +37,7 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
           {discount > 0 && (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-xs md:text-sm text-white line-through">₹{price.toFixed(2)}</span>
+                <span className="text-xs md:text-sm text-muted-foreground line-through">₹{price.toFixed(2)}</span>
                 <span className="text-xs md:text-sm font-bold text-red-600">{discount}% OFF</span>
               </div>
               <p className="text-base md:text-xl font-bold text-muted-foreground">
@@ -46,7 +46,7 @@ const ProductCard = ({ product, onClick }: ProductCardProps) => {
             </>
           )}
           {discount === 0 && (
-            <p className="text-base md:text-xl font-bold text-white">
+            <p className="text-base md:text-xl font-bold text-foreground">
               ₹{price.toFixed(2)}
             </p>
           )}

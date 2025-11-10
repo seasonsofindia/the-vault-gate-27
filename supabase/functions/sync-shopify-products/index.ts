@@ -5,9 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SHOPIFY_ADMIN_API_KEY = Deno.env.get('SHOPIFY_ADMIN_API_KEY')!;
-const SHOPIFY_STORE_DOMAIN = Deno.env.get('SHOPIFY_STORE_DOMAIN')!;
-const SHOPIFY_API_VERSION = '2025-01';
+const SHOPIFY_ADMIN_API_KEY = Deno.env.get('SHOPIFY_ACCESS_TOKEN')!;
+const SHOPIFY_STORE_DOMAIN = 'vault27-uzutu.myshopify.com';
+const SHOPIFY_API_VERSION = '2025-07';
 
 async function shopifyRequest(endpoint: string, method: string = 'GET') {
   const url = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/${endpoint}`;

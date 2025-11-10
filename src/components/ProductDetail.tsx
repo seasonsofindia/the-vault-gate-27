@@ -105,7 +105,7 @@ const ProductDetail = ({ product, open, onClose }: ProductDetailProps) => {
             <div>
               <h2 className="text-3xl font-bold mb-3">{node.title}</h2>
               <p className="text-2xl font-bold bg-[image:var(--gold-shine)] bg-clip-text text-transparent mb-4">
-                {node.priceRange.minVariantPrice.currencyCode} ${parseFloat(node.priceRange.minVariantPrice.amount).toFixed(2)}
+                ₹{parseFloat(node.priceRange.minVariantPrice.amount).toFixed(2)}
               </p>
               <p className="text-muted-foreground leading-relaxed">{node.description}</p>
             </div>
